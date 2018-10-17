@@ -69,4 +69,22 @@ class FontainebleauTest extends FunSuite {
     val success_rate = ((correct.toDouble / test_data.length) * 100).toInt
     println(success_rate + "% success rate")
   }
+
+  test("Minimal example") {
+    implicit val structure = Vector("color", "size", "shape", "label")
+
+    val data = Vector(
+      Vector("yellow", 4, "round", "apple"),
+      Vector("green", 5, "long", "cucumber"),
+      Vector("green", 10, "round", "watermelon"),
+      Vector("yellow", 3.5, "round", "lemon"),
+      Vector("red", 3, "round", "apple")
+    )
+
+    val forest = grow_random_forest(data, 100, 2)
+
+    val strange_fruit = Vector("yellow", "round", 3, "?")
+
+    println(forest.classify(strange_fruit))
+  }
 }
