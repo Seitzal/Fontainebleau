@@ -5,32 +5,47 @@ import scala.util.Random
 import scala.collection.parallel.immutable.ParVector
 import eu.seitzal.fontainebleau.tasks._
 
+/**
+ *  Contains functions for training and using decision tree and random forest
+ *  classifiers.
+ */
 package object fontainebleau {
 
-  // An item of data
+  /** 
+   *  Vector of values representing an observation. The types and order of
+   *  these values are described by an implicit structure vector.
+   */
   type Item = Vector[Any]
 
-  // Partitions a dataset for a given question, returning two smaller datasets
-  // that contain all items for which the question is true or false, respectively
-  def partition(data : Vector[Item], question : Question) =
+  /**
+   *  Partitions a dataset for a given question, returning two smaller datasets
+   *  that contain all items for which the question is true or false, respectively
+   */
+  private def partition(data : Vector[Item], question : Question) =
     (data.filter(item => question(item)), data.filterNot(item => question(item)))
 
-  // Returns the column number of the class labels in the implicit structure
-  def label_col(implicit structure : Vector[String]) : Int =
+  /**
+   *  Returns the column number of the class labels in the implicit structure
+   */
+  private[fontainebleau] def label_col(implicit structure : Vector[String]) : Int =
     structure.indexOf("label") match {
       case -1           => throw new Error("Training data must contain labels")
       case index        => index
     }
 
-  // Returns the unique classes present in a dataset
-  def unique_classes(data : Vector[Item], classes : Set[String] = Set())
+  /**
+   *  Returns the unique classes present in a dataset, without duplicates
+   */
+  private[fontainebleau] def unique_classes(data : Vector[Item], classes : Set[String] = Set())
       (implicit structure : Vector[String]) : Set[String] = {
     if (data.isEmpty) classes
     else unique_classes(data.tail, classes + data.head(label_col).toString)
   }
 
-  // Calculates the gini impurity of a dataset
-  def gini_impurity(data : Vector[Item])
+  /**
+   *  Calculates the gini impurity of a dataset
+   */
+  private def gini_impurity(data : Vector[Item])
       (implicit structure : Vector[String]) : Double = {
 
     val classes = unique_classes(data).toList
@@ -43,8 +58,11 @@ package object fontainebleau {
     1.0 - squared_class_frequencies.foldLeft(0.0)(_ + _)
   }
 
-  // Calculates the purity gained by a split
-  def information_gain(
+  /**
+   *  Calculates the reduction in gini impurity gained by splitting a dataset
+   *  in a specific way
+   */
+  private def information_gain(
       left : Vector[Item], right : Vector[Item], 
       current_size : Int, current_impurity : Double)
       (implicit structure : Vector[String]): Double = {
@@ -54,17 +72,23 @@ package object fontainebleau {
     (right.length.toDouble / current_size) * gini_impurity(right))
   }
 
-  // Builds a bootstrapped dataset from a given training dataset
-  def bootstrapped_dataset(data : Vector[Item]) : Vector[Item] = {
+  /** 
+   *  Builds a bootstrapped dataset from a given training dataset.
+   *  The bootstrapped set contains the same number of observations as the
+   *  original dataset, but may contain duplicate observations.
+   */
+  private def bootstrapped_dataset(data : Vector[Item]) : Vector[Item] = {
     val n = data.length
     val ran = new Random()
     def entry_numbers = for (i <- 0 until n) yield ran.nextInt(n)
     entry_numbers.map(x => data(x)).toVector
   }
 
-  // Finds all possible questions for a given dataset, considering only a randomly
-  // selected set of variables
-  def bootstrapped_possible_questions(data : Vector[Item], n_vars : Int)
+  /** 
+   *  Finds all possible questions for a given dataset, considering only a
+   *  randomly selected set of variables
+   */
+  private def bootstrapped_possible_questions(data : Vector[Item], n_vars : Int)
       (implicit structure : Vector[String]) : List[Question] = {
     val n = structure.length
     val lc = label_col
@@ -90,8 +114,10 @@ package object fontainebleau {
     questions.toList
   }
 
-  // Finds all possible questions to split a dataset
-  def possible_questions(data : Vector[Item])
+  /** 
+   *  Finds all possible questions to split a dataset
+   */
+  private def possible_questions(data : Vector[Item])
       (implicit structure : Vector[String]) : List[Question] = {
     val lc = label_col
     val questions = for (
@@ -108,8 +134,10 @@ package object fontainebleau {
     questions.toList
   }
 
-  // Finds the question which can split a dataset for the highest information gain
-  def best_question(data : Vector[Item], bootstrap : Boolean = false, 
+  /**
+   *  Finds the question which can split a dataset for the highest information gain
+   */
+  private def best_question(data : Vector[Item], bootstrap : Boolean = false, 
       n_vars : Int = 0)
       (implicit structure : Vector[String]) : (Question, Double) = {
 
@@ -139,9 +167,18 @@ package object fontainebleau {
     else iter(possible_questions(data), null, 0.0)
   }
 
-  // Builds a new tree node for the given data
-  def build_node(data : Vector[Item], depth : Int, bootstrap : Boolean = false,
-      n_vars : Int = 0)(implicit structure : Vector[String]) : Tree = {
+  /**
+   *  Builds a new tree node for the given data
+   *  @param depth The recursion depth of the call, required to visualize
+   *               the tree in the console
+   *  @param bootstrap If true, only a random subset of variables are 
+   *                   considered for the split question
+   *  @param n_vars If bootstrap is set to true, this specifices the number
+   *                of variables to consider 
+   */
+  private def build_node(data : Vector[Item], depth : Int, 
+      bootstrap : Boolean = false, n_vars : Int = 0)
+      (implicit structure : Vector[String]) : Tree = {
 
     val tuple = best_question(data, bootstrap, n_vars)
     val question = tuple._1
@@ -161,7 +198,16 @@ package object fontainebleau {
     }
   }
 
-  // Builds a decision tree classifier from the given training data
+  /**
+   *  Builds a decision tree classifier from the given training data
+   *  @param bootstrap If true, only a random subset of variables are 
+   *                   considered for the split question at each node
+   *  @param n_vars If bootstrap is set to true, this specifices the number
+   *                of variables to consider at each node
+   *  @param structure An implicit vector containing the names of all variables
+   *                   in the dataset. The dependent variable must always be 
+   *                   named "label".
+   */
   def build_tree(data : Vector[Item], bootstrap : Boolean = false,
       n_vars : Int = 0)(implicit structure : Vector[String]) : Tree =
     if (bootstrap)
@@ -169,8 +215,19 @@ package object fontainebleau {
     else
       build_node(data, 0)
 
-  // Trains a random forest from the given training data, with a specified number
-  // of decision trees.
+  /** 
+   *  Trains a random forest from the given training data, with a specified
+   *  number of decision trees.
+   *  @param n_trees How many trees to build. A larger number of trees may
+   *                 make the model more resistant to overfitting, but will
+   *                 increase the time required for training.
+   *  @param n_vars The number of variables to consider at each tree node.
+   *                A good starting value is usually the square root of the
+   *                total number of independent variables.
+   *  @param structure An implicit vector containing the names of all variables
+   *                   in the dataset. The dependent variable must always be 
+   *                   named "label".
+   */
   def grow_random_forest(data : Vector[Item], n_trees : Int, n_vars : Int)
       (implicit structure : Vector[String]) : RandomForest = {
     val saplings = (0 until n_trees).toVector.par
@@ -178,8 +235,10 @@ package object fontainebleau {
     new RandomForest(trees)
   }
 
-  // Helper method for indentation of nodes
-  def whitespace(n : Int) : String =
+  /**
+   *  Helper method for indentation of nodes
+   */
+  private[fontainebleau] def whitespace(n : Int) : String =
     (for (i <- 0 until n) yield " ").mkString
 
 }

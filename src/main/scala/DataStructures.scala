@@ -2,12 +2,18 @@ package eu.seitzal.fontainebleau
 
 import scala.collection.parallel.immutable.ParVector
 
-// A question that can be asked about an item
+/**
+ *  A yes-or-no question that can be asked about an observation.
+ */
 trait Question {
   def apply(item : Item) : Boolean
 }
 
-// Question whether a property equals some value
+/** 
+ *  Question whether a property equals some value.
+ *  Can be asked at any scale degree, but will generally be less useful
+ *  than [[OrdinalQuestion]] at scale degrees higher than nominal.
+ */
 class NominalQuestion(variable : Int, value : String)
     (implicit structure : Vector[String]) extends Question {
   def apply(item : Item) = {
@@ -22,8 +28,10 @@ class NominalQuestion(variable : Int, value : String)
     "" + structure(variable) + " == " + value + "?"
 }
 
-// Question whether a property is greather than or equal to some value
-// The scale niveau must be at least ordinal
+/**
+ *  Question whether a property is greather than or equal to some value.
+ *  The scale degree of the property must be at least ordinal.
+ */
 class OrdinalQuestion(variable : Int, value : Double)
     (implicit structure : Vector[String]) extends Question {
   def apply(item : Item) = {
@@ -39,21 +47,30 @@ class OrdinalQuestion(variable : Int, value : Double)
     "" + structure(variable) + " >= " + value + "?"
 }
 
-// Base trait for any tree Tree
+/** 
+ *  Base trait for any decision tree node or leaf
+ */
 trait Tree {
 
-  // Attempts to classify an item. Returns a list of possible classifications
-  // along with their respective probability.
+  /**
+   *  Attempts to classify an item. Returns a list of possible classifications
+   *  along with their respective probability, as judged by the decision tree.
+   */
   def classify(item : Item) : List[(String, Double)]
 }
 
-// A tree Tree that has no branches of its own
+/** 
+ *  A tree that has no branches of its own, and represents a state in which
+ *  no more certainty can be gained by asking additional questions.
+ */
 class Leaf(data : Vector[Item], depth : Int)
     (implicit structure : Vector[String]) extends Tree {
 
-  private val i = label_col
-  private val size = data.length
-  private val options = for (cl <- unique_classes(data).toList) yield 
+  // Predictions for a leaf are only resolved when they are needed,
+  // which may improve runtime for outcomes that are rarely occuring in the data
+  private lazy val i = label_col
+  private lazy val size = data.length
+  private lazy val options = for (cl <- unique_classes(data).toList) yield 
       (cl, data.filter(item => item(i).toString == cl).length.toDouble / size)
 
   def classify(item : Item) = options
@@ -61,7 +78,9 @@ class Leaf(data : Vector[Item], depth : Int)
   override def toString = whitespace(depth) + "Leaf: " + options
 }
 
-// A decision Tree, which splits the data using a given question
+/**
+ *  A decision tree node, which splits the data using a given question.
+ */
 class Node(val depth: Int, val question : Question, val left : Tree,
     val right : Tree) (implicit structure : Vector[String]) extends Tree {
 
@@ -73,8 +92,10 @@ class Node(val depth: Int, val question : Question, val left : Tree,
     else right.classify(item)
 }
 
-// A random forest, which consists of a number of decision trees trained on
-// bootstrapped subsets of the same dataset 
+/** 
+ *  A random forest classifier, which consists of a number of decision trees 
+ *  trained on bootstrapped subsets of the same dataset.
+ */ 
 class RandomForest(trees : ParVector[Tree])
     (implicit structure : Vector[String]) {
 

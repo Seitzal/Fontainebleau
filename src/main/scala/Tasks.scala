@@ -5,9 +5,9 @@ import scala.util.DynamicVariable
 import scala.collection.parallel.immutable.ParVector
 
 package object tasks {
-  val forkJoinPool = new ForkJoinPool
+  private val forkJoinPool = new ForkJoinPool
 
-  abstract class TaskScheduler {
+  private abstract class TaskScheduler {
     def schedule[T](body: => T): ForkJoinTask[T]
     def parallel[A, B](taskA: => A, taskB: => B): (A, B) = {
       val right = task {
@@ -18,7 +18,7 @@ package object tasks {
     }
   }
 
-  class DefaultTaskScheduler extends TaskScheduler {
+  private class DefaultTaskScheduler extends TaskScheduler {
     def schedule[T](body: => T): ForkJoinTask[T] = {
       val t = new RecursiveTask[T] {
         def compute = body
@@ -33,7 +33,7 @@ package object tasks {
     }
   }
 
-  val scheduler =
+  private val scheduler =
     new DynamicVariable[TaskScheduler](new DefaultTaskScheduler)
 
   def task[T](body: => T): ForkJoinTask[T] = {
