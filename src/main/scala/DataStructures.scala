@@ -9,7 +9,7 @@ trait Question {
   def apply(item : Item) : Boolean
 }
 
-/** 
+/**
  *  Question whether a property equals some value.
  *  Can be asked at any scale degree, but will generally be less useful
  *  than [[OrdinalQuestion]] at scale degrees higher than nominal.
@@ -24,7 +24,7 @@ class NominalQuestion(variable : Int, value : String)
     }
   }
 
-  override def toString = 
+  override def toString =
     "" + structure(variable) + " == " + value + "?"
 }
 
@@ -47,7 +47,7 @@ class OrdinalQuestion(variable : Int, value : Double)
     "" + structure(variable) + " >= " + value + "?"
 }
 
-/** 
+/**
  *  Base trait for any decision tree node or leaf
  */
 trait Tree {
@@ -59,7 +59,7 @@ trait Tree {
   def classify(item : Item) : List[(String, Double)]
 }
 
-/** 
+/**
  *  A tree that has no branches of its own, and represents a state in which
  *  no more certainty can be gained by asking additional questions.
  */
@@ -70,7 +70,7 @@ class Leaf(data : Vector[Item], depth : Int)
   // which may improve runtime for outcomes that are rarely occuring in the data
   private lazy val i = label_col
   private lazy val size = data.length
-  private lazy val options = for (cl <- unique_classes(data).toList) yield 
+  private lazy val options = for (cl <- unique_classes(data).toList) yield
       (cl, data.filter(item => item(i).toString == cl).length.toDouble / size)
 
   def classify(item : Item) = options
@@ -92,10 +92,10 @@ class Node(val depth: Int, val question : Question, val left : Tree,
     else right.classify(item)
 }
 
-/** 
- *  A random forest classifier, which consists of a number of decision trees 
+/**
+ *  A random forest classifier, which consists of a number of decision trees
  *  trained on bootstrapped subsets of the same dataset.
- */ 
+ */
 class RandomForest(trees : ParVector[Tree])
     (implicit structure : Vector[String]) {
 
@@ -109,7 +109,7 @@ class RandomForest(trees : ParVector[Tree])
         votes : Map[String, Int]) : Map[String, Int] =
       if (responses.isEmpty) votes
       else if (votes.contains(responses.head))
-        count(responses.tail, 
+        count(responses.tail,
           votes.updated(responses.head, votes(responses.head) + 1))
       else
         count (responses.tail, votes.updated(responses.head, 1))

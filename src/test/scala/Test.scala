@@ -16,8 +16,9 @@ class FontainebleauTest extends FunSuite {
 
     val data_vectorised = data.tail.map(row => row.toVector).toVector
 
-    val data_clean = 
-      for (row <- data_vectorised if row(11) != "NA" && row(12) != "NA") yield Vector(
+    val data_clean =
+      for (row <- data_vectorised
+          if row(11) != "NA" && row(12) != "NA") yield Vector(
         row(0).toInt,
         row(1),
         row(2),
@@ -31,7 +32,7 @@ class FontainebleauTest extends FunSuite {
         row(10),
         row(11),
         row(12),
-        (row(13) == "0").toString 
+        (row(13) == "0").toString
       )
 
     val training_data = data_clean.take(150)
@@ -43,8 +44,8 @@ class FontainebleauTest extends FunSuite {
     // Train the model
     val n_trees = 200
     val n_vars = 4
-    println("Training the model:\n" + 
-      n_trees + " trees with " + 
+    println("Training the model:\n" +
+      n_trees + " trees with " +
       n_vars + " random variables per node on " +
       training_data.length + " observations")
     val forest = grow_random_forest(training_data, 200, 3)
@@ -55,7 +56,8 @@ class FontainebleauTest extends FunSuite {
     var incorrect = 0
     for (observation <- test_data) {
       val prediction = forest.classify(observation)
-      if (prediction.sortBy(tuple => tuple._2).reverse.head._1 == observation(13)) {
+      if (prediction.sortBy(tuple => tuple._2).reverse.head._1 ==
+          observation(13)) {
         correct = correct + 1
       } else {
         incorrect = incorrect + 1
