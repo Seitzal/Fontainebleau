@@ -1,6 +1,6 @@
 # Fontainebleau
 Fontainebleau is a mini library for purely functional random forest classifiers in scala.
-It is still very much under development, and in its current state, horribly slow and inaccurate.
+Note: I wrote this as an exercise, and it is not competitive in terms of performance and accuracy to more established libraries.
 
 # Minimal example
 ```scala
